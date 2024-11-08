@@ -1,0 +1,197 @@
+<meta charset="utf-8" emacsmode="-*- markdown -*-">
+
+**LOG 750 - Laboratoire 2 - Version 1.03**
+
+# Objectifs du laboratoire
+- Se familiariser avec la modélisation, les transformations et l'utilisation d'une caméra
+- Se familiariser avec la création et l'utilisation de graphe de scène à travers de l'utilisation des patrons de conception "Composite" et "Visitor"
+- Mise en œuvre des mécaniques d'animation simples
+- Utilisation de la sélection (picking) comme nouvelle forme d'interaction utilisateur
+
+Le code fourni pour ce laboratoire comprend une caméra de type "fly" que vous pouvez orienter en maintenant le clic gauche et en déplaçant le curseur. Vous pouvez vous déplacer à l’aide des touches WASD. De plus, la fonctionnalité de caméra est désactivée lorsque vous interagissez avec l’interface ImGUI.
+
+![Fenêtre de base](imgs/lab-2-start.png width="400px")
+
+Vous devez créer un logiciel simple permettant de positionner, de transformer et d’animer des cubes dans une scène 3D. L’utilisateur va interagir avec l’application de plusieurs manières (interface ImGui, clique directement sur les objets montrés à l’écran). **Vous devrez donner des rétroactions visuelles à l’utilisateur lorsqu’il interagit avec l’application**.
+
+![Exemple d'un résultat final du laboratoire avec une rétroaction visuelle active (selection face)](imgs/lab-2-end.png width="400px")
+
+!!! WARN: Important
+    Les exemples pertinents à la réalisation du laboratoire sont "transformation" (cours 4) et "picking" (lab 2). Un autre exemple fourni dans le cours 6 pour le picking sera aussi fourni. Vous pouvez réutiliser tel quel le code ou adapter ces exemples (ou tout autre exemple fourni en classe) pour votre laboratoire. Pour rappel, les exemples sont accessibles à l'adresse suivante:
+    https://github.com/ETS-LOG750/example-log750-a24.
+    
+!!! ERROR: Attention
+    Si vous utilisez des ressources externes, merci de les indiquer dans le rapport dans la section "References".
+
+# Récupérer le code de base 
+
+De la même manière que pour le laboratoire 1. Cependant, comme le code de départ est différent, vous allez devoir utiliser un nouveau lien GitHub Classroom pour initialiser le nouveau projet. Veuillez suivre les instructions du laboratoire 1 pour plus de détails sur la configuration de votre environnement de développement et la création d’un nouveau projet. **Je rappelle qu’il est attendu que le nom du projet est `lab-2-groupe-a2024-XX`, où `XX` est votre numéro de groupe.**.
+
+__Utilisez Discord et informez vos coéquipiers de la création du groupe sur GitHub classroom. Le lien pour rejoindre la Github classroom est disponible sur Moodle__.
+
+Vous pouvez suivre la documentation officielle de Github pour la configuration: https://docs.github.com/en/get-started/quickstart/set-up-git 
+
+**N'hésitez pas de contacter le chargé de laboratoire ou professeur (p. ex. sur le discord), si vous avez la moindre question.**
+
+# Devoir (100 pt)
+
+La structure du code de base est similaire au premier laboratoire. Le changement principal est l’ajout d’une caméra contrôlable avec le clavier et la souris. La logique de caméra est mise en œuvre dans les fichiers `Camera.{cpp/h}'. La redirection des évènements claviers est effectuée dans `MainWindow.cpp` (`MainWindow::InitializeCallback()`) en utilisant les [« callbacks »] (https://www.glfw.org/docs/3.3/input_guide.html) de GLFW. Le nuanceur par défaut `basic.{vert/frag}` prend les informations de normales et de positions et les transforme dans l’espace de la caméra (Cours 6). Cela signifie que les calculs effectués dans le nuanceur de fragments sont dans l’espace caméra (convention que nous verrons en cours 6).
+
+Il est essentiel qu'au lancement, votre application permette de démontrer que vous avez bien mis en œuvre les fonctionnalités de base. 
+
+!!! ERROR: Attention
+    Il faut que votre application soit robuste aux interactions utilisateurs. C’est votre responsabilité de vérifier si les paramètres utilisateur spécifiés dans ImGUI sont valides ou non. Si, lors de la correction, votre application n’est pas robuste, vous allez perdre des points. 
+
+## Fonctionnalités principales (90 pts)
+
+### Description et mise en œuvre graphe de scène (15 pts)
+
+Initialement, la scène doit contenir des cubes disposés dans une grille alignée sur les axes. Ceux-ci doivent être disposés pour former 10 rangées et 10 colonnes. Ce « plancher » doit reposer sur le plan XZ et être **centré** à l'origine (0,0,0). La normale au plan XZ est Y. De plus, chaque cube a une dimension de 1x1x1 unités. 
+
+!!! WARN: Attention
+    Bien suivre les spécifications ici, trop souvent des points sont perdu bêtement à cause de la non-conformité des spécifications (e.g., positions des cubes initiaux, dimension des cubes, etc.).
+
+    Il est attendu que vous définissez la modélisation de votre cube à la main (i.e., pas de modèle 3D externe chargé dans l'application). 
+    
+    La courbe permettant de contrôler la trajectoire de la source ponctuelle (voir 3.1.2) doit aussi être définie à la main. Ces points de contrôle doivent être visibles à l'écran si l'utilisateur maintient la touche Alt. L'utilisateur doit pouvoir modifier la position d'un point de contrôle selectionné (voir section interaction). La courbe n'a pas besoin d'être intégrée dans le graphe de scène.
+
+Votre application devra permettre d’ajouter de nouveaux cubes et de les transformer de façon hiérarchique. Pour ce laboratoire, vous devez mettre en place une structure de graphe de scène. Les primitives doivent ainsi être conservées dans un graphe de scène simple (patron de conception [composite](https://refactoring.guru/design-patterns/composite)). Il faut aussi que les transformations (animer ou non) soient présentes dans le graphe de scène. La figure ci-dessus montre un exemple de hiérarchie de classes appropriées pour le laboratoire. Notez que vous devez utiliser le patron de conception ["Visiteur"](https://refactoring.guru/design-patterns/visitor) pour parcourir le graphe de scène pour, par exemple, dessiner les cubes. Un autre hierachie de classe est possible (par exemple, fusionner `Transform` et `Cube`).
+
+![Exemple de hiérarchie de classe conseillée pour le laboratoire 2](imgs/lab-2-diagram.png)
+
+L'image ci-dessous présente des instances des classes et leurs relations. Ce diagramme est uniquement pour vous donner une idée de comment organiser votre code. 
+
+Notez que la racine du graphe de scène est un nœud "Transform" avec une matrice identité. Ce nœud peut avoir plusieurs enfants. Vous devrez utiliser un tel nœud comme racine de votre graphe de scène. Ensuite, pour chaque nouvelle primitive ajoutée dans la scène peut être l'ajout de plusieurs type de noeuds (e.g., `Transform` et `Cube`). Votre hiérarchie de graphe de scène doit permettre d'avoir un arbre d'objet (comme montré ci-dessous) qui supporte une profondeur illimitée. `Mesh` permets de partager les objets OpenGL (ex. VBO) entre les différentes instances de cube. **Il est attendu qu'un nombre minimal de primitives soit envoyé au GPU en exploitant les redondances dans le graphe de scène.**
+
+![Exemple de diagramme d'instance du graphe de scène](imgs/lab-2-instances.png)
+
+Pour réaliser l'affichage, vous devez parcourir le graphe de scène. À chaque nœud "Transform" que vous rencontrez, vous appliquez ses transformations à la matrice de transformation courante `Mc`, puis vous parcourez chacun de ses enfants. Si c'est un nœud "Cube", vous pouvez dessiner le cube (préchargé dans le GPU avec VBO/VAO). **Les sommets du cube seront définis en coordonnée locale et transformer par la/les matrice(s) de transformation.**
+
+!!! WARN: Attention
+    N'oubliez pas que si vos nœuds font des appels OpenGL lors de leur construction, il faut les construire après les différentes initialisations (GLFW, GLAD, ImGUI, et OpenGL). Par exemple, il n'est pas possible de générer un VBO avant que la fenêtre et le contexte OpenGL soient créés (`MainWindow::Initialisation()`). 
+
+!!! ERROR: Type de nœuds
+    Pour ce laboratoire, il n'est pas nécessaire d'inclure les sources de lumière dans le graphe de scène. Cette intégration peut faire partie des fonctionnalités additionnelles (et doit être expliquée dans le rapport).
+
+    Il est cependant très fortement recommandé d'inclure la caméra dans le graphe de scène. Cela permettra de simplifier la gestion des transformations de la caméra pour le laboratoire 3.
+
+!!! Tip: Patron de conceptions
+    Les patrons de conceptions comme ["Composite"](https://refactoring.guru/fr/design-patterns/composite) ou [Visitor](https://refactoring.guru/design-patterns/visitor) sont *necessaire* pour effectuer ce laboratoire. 
+
+#### Gestion du far/near de la caméra
+
+Advenant que les cubes qui sont trop proches ou trop loin deviennent invisibles, ajustez les plans `near` et `far` de la caméra. Nous verons plus tard dans certains cas comment ajuster ces valeurs automatiquement. Pour ce laboratoire, vous pouvez ajuster ces valeurs manuellement. Notez que la mise à jour de ces valeurs change la matrice de projection de la caméra. Il ne faut pas oublier de mettre à jour la matrice de projection de la caméra dans OpenGL (via l'utilisation d'un uniforme).
+
+!!! WARN: Profondeur affichée
+    La perte de vue des objets à cause de valeurs incorrectes pour les valeurs `near` et `far` de la caméra fera perdre des points. 
+
+#### Affichage de la trajectoire de la source ponctuelle
+
+Il est attendu que la trajectoire de la source ponctuelle soit affichée à l’écran. Vous pouvez utiliser des lignes pour représenter la trajectoire. Celle-ci doit être fermée et définie à l’aide de deux courbes de Bézier d’ordre 3. L’affichage de la trajectoire ainsi que la position 3D des points de contrôle doivent être visibles à l’écran si l’utilisateur maintient la touche Alt. Pour l’affichage de la trajectoire, vous pouvez utiliser une ligne « strip » avec plusieurs positions le long de la courbe. Ces positions peuvent être calculées en utilisant une discrétisation de la courbe de Bézier (p. ex., évaluer la courbe à un intervalle régulier).
+
+### Éclairage (15 pts)
+
+Les objets composant la scène doivent posséder des matériaux et être éclairés correctement. À cet effet, vous devez réutiliser votre code du laboratoire 1. L'environnement comportera trois lumières : 
+- **Une lumière ponctuelle**: contrôlée et animée par une courbe fermée (voir le volet animation).
+- **Une lumière directionnelle**: orientée et contrôlé par l'utilisateur. Il est attendu que vous utilisez les coordonnées sphériques pour produire cette direction ($\theta$ et $\phi$). Réutilisez votre code du laboratoire 1 pour définir la direction de la lumière directionnelle par rapport à ces coordonnées sphériques.
+- **Une lumière ambiante**: constante et uniforme dans toute la scène comme dans le laboratoire 1.
+
+!!! WARN: Mouvement caméra
+    Les différentes sources de lumières doivent être non affectées par le mouvement de la caméra. Par exemple, si quand vous effectuez une rotation de la caméra, la source directionnelle ne devra pas bouger. Si c'est le cas, c'est que vous avez fait une erreur dans votre code (i.e., oubli de transformer la direction correctement).
+
+La couleur de chaque lumière devra être contrôlée de façon indépendante par l'utilisateur. L'interface devra permettre de définir des couleurs à haute dynamique (HDR) pour chaque lumière (i.e., la valeur RGB des lumières peuvent être supérieure à 1). Vous pouvez utiliser un facteur d'échelle pour ajuster la luminosité des lumières.
+
+!!! ERROR: Laboratoire 1 (diffus/spéculaire)
+    Si vous n'avez pas réussi à réaliser le calcul d'éclairage au laboratoire 1, n'hésitez pas à contacter les chargés de laboratoire ou le professeur afin d'avoir de l'aide pour vous assurer d'avoir une base de code fonctionnelle pour ce laboratoire.
+
+### Sélection, rétroaction visuelle et interaction (30 pts)
+
+!!! Tip: Notation
+    Il est attendu que vous décrivez dans le rapport les interactions et les rétroactions visuelles que vous avez mis en place. Cette description vaudra 5 points de la note de cette section.
+
+En plus des interactions utilisant l'interface ImGUi, les interactions supplémentaires doivent être mises en œuvre:
+- **Interaction avec un cube**: Ctrl-Click
+- **Interaction avec une face**: Shift-Click
+- **Interaction avec un point de contrôle de la trajectoire de la source ponctuelle**: Alt-Click
+
+!!! Tip: Code d'exemple
+    Les interactions s'effectueront directement en cliquant sur les objets affichés à l'écran. Pour trouver l'objet sélectionné, veuillez regarder les exemples sur le "picking". Nous verrons plusieurs façons d'effectuer cette opération.
+
+**Rétroaction visuelle**:
+Ces intéractions doivent utiliser des rétroaction visuelle pour permettre d'identifier facilement une face ou un cube sélectionné par exemple. C'est à vous de décider quelle rétroaction à mettre en place. Des rétroactions visuelles sophistiquées pourront être considérées comme une fonctionnalité additionnelle (points supplémentaires). La motivation de la rétroaction visuelle choisie devra être expliquée dans le rapport.
+
+#### Interaction avec un cube
+
+L'utilisation devra pouvoir sélectionner un cube en le cliquant directement dans la fenêtre d'affichage. Le cube sélectionné sera le cube se trouvant sous le curseur. **Une rétroaction visuelle doit être maintenue si un cube est actuellement sélectionné**. Vous devez aussi proposer un mécanisme pour retirer cette sélection. 
+
+#### Interaction avec une face
+
+L'utilisateur devra pouvoir ajouter un nouveau cube sur une face de n'importe quel cube. **Une rétroaction visuelle doit en tout temps indiquer (si shift est maintenu) à l'utilisateur qu'il peut positionner un cube lorsqu'une face d'un cube se trouve sous le curseur.** Cette rétroaction doit indiquer clairement à l'utilisateur où sera positionné le cube.
+
+!!! Tip: GLFW
+    Pour connaître si une touche est pressée, vous pouvez appeler `glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS` dans la boucle de rendu. 
+
+#### Interaction avec un point de contrôle
+
+Il est attendu que le chemin de votre source ponctuelle soit contrôlé par au moins deux courbes de Bézier produisant une trajectoire fermée. Maintenir la touche Alt doit permettre de visualiser la position des points de contrôle dans la scène. La sélection d'un point de contrôle (par Alt+Click) doit permettre de modifier sa position avec ImGui. La trajectoire de la courbe doit rester fermée en tout temps. 
+
+### Modélisation et transformation hiérarchique (15 pts)
+
+La modélisation hiérarchique sera mise en œuvre à l'aide du graphe de scène. 
+
+L'utilisateur devra avoir la possibilité de tourner le cube sélectionné en cliquant sur un bouton de l'interface utilisateur. L'utilisateur devra pouvoir choisir l'axe de rotation et le sens (horaire ou antihoraire) (voir Figure 3). **Toutes les transformations appliquées sur un cube seront aussi appliquées à ses cubes enfant grâce au parcours du graphe de scène.*** Veuillez noter que vous n'avez pas besoin de gérer les collisions et interpénétrations engendrées par ces transformations.
+
+![Exemple d'une rotation dans une modélisation hiérarchique. Pour visualiser l'animation, voir ce document sous format web. La première version du sujet est incluse dans votre répertoire Git.](imgs/lab2-rotation.gif  width="400px")
+
+### Animation (15 pts)
+
+La rotation devra être animée dans le temps afin d'effectuer une rotation totale de 90 degrés. Notez que l'animation uniquement débute quand l'utilisateur a cliqué sur un button de transformation. 
+
+L'animation de la position de la source de lumière ponctuelle s'effectuera en utilisant une suite de courbe de Bézier. La position de la source de lumière sera proportionnellement au temps écoulé. Utilisez le temps écoulé modulé par une période pour obtenir une position sur la courbe. La période de l'animation doit être de 2 secondes.
+
+!!! WARN: Interactions utilisateur
+    L'animation du cube doit être robuste aux entrées de l'utilisateur. Il faut que votre application fonctionne correctement même si l'utilisateur interagit rapidement avec votre application.
+
+## Fonctionnalités additionnelles (10 pts)
+
+L'application doit aussi avoir des particularités additionnelles. Pour avoir tous les points, vos particularités additionnelles doivent être conséquentes (suffisamment complexes et difficiles à réaliser) et se comparer favorablement à celles des autres équipes. Vous pouvez voir ceci comme une compétition entre les équipes. Vous devez décrire ces fonctionnalités additionnelles dans le rapport. 
+
+**Les particularités additionnelles ne peuvent pas correspondre à des exigences des laboratoires à venir. En particulier: **
+
+- Pas d'utilisation de textures
+- Pas de normal mapping
+- Pas de shadow mapping 
+
+Voici quelques exemples de fonctionnalités additionnelles:
+- éléments semi-transparents
+- permettre de changer le matériel de chaque cube indépendamment
+- permettre d'avoir un matériel différent par face
+- permettre de copier une hiérarchie de cube
+- sélection multiple de carrés (box select) avec une rétroaction visuelle spécifique
+- sauvegarde et chargement du monde (ex. json). Vous pouvez utiliser des bibliothèques externes. 
+- ajout ou retrait de certaines sections de la trajectoire de la source ponctuelle
+
+## Correction
+
+Il y aura correction interactive du laboratoire à la séance qui suit immédiatement la remise. **La présence à cette séance de laboratoire est donc essentielle**, car le chargé de laboratoire demandera à voir le fonctionnement de l'application et pourra demander des explications sur le design et le code.
+
+Il y aura évaluation du travail en équipe. Vous devrez remplir un formulaire d'auto-évaluation et d'évaluation du travail de vos coéquipiers via Teammates. Votre note finale pourrait ainsi varier de +/- 10 %.
+
+Utiliser le gabarit de rapport. Le gabarit contient la grille de correction ainsi que la pondération pour chaque élément. 
+
+## Soumettre votre devoir
+
+Créer une archive contenant:
+- tous les fichiers des dossiers `src`
+- tous autres fichiers nécessaires à l'utilisation de votre application
+- le rapport respectant le gabarit (disponible sur Moodle) 
+
+Soumettez cette archive sur Moodle avant la deadline. N'oubliez pas de remplir le [teammates](https://teammatesv4.appspot.com/web/front/home) pour l'évaluation croisée des pairs. 
+
+<!-- Markdeep: -->
+<style class="fallback">
+    body {
+        visibility: hidden
+    }
+</style>
+<script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js?" charset="utf-8"></script> 
